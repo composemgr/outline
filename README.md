@@ -50,9 +50,9 @@ See `docker-compose.yaml` for complete list of configurable options.
 
 ## 📂 Volumes
 
-- `./rootfs/data/outline` - Data storage
-- `./rootfs/config/outline` - Data storage
-- `./rootfs/data/db/postgres/outline` - Data storage
+- `./volumes/data/outline` - Data storage
+- `./volumes/config/outline` - Data storage
+- `./volumes/data/db/postgres/outline` - Data storage
 
 ## 🔐 Security
 

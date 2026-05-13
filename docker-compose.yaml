@@ -1,5 +1,6 @@
 # nginx proxy address - http://172.17.0.1:3001
 
+name: outline
 x-logging: &default-logging
   driver: json-file
   options:
@@ -8,31 +9,46 @@ x-logging: &default-logging
 
 services:
   outline:
-    image: outline/outline:latest
+    image: outlinewiki/outline:latest
+    pull_policy: always
     container_name: outline-app
-    restart: unless-stopped
+    restart: always
     logging: *default-logging
     networks:
       - outline
     ports:
-      - "3001:3001"
+      - "172.17.0.1:3001:3000"
     environment:
       TZ: ${TZ:-America/New_York}
+      NODE_ENV: production
+      SECRET_KEY: ${APP_SECRET_KEY:-changeme_secret_key_min_32_chars}
+      UTILS_SECRET: ${APP_UTILS_SECRET:-changeme_utils_secret_min_32_chars}
+      DATABASE_URL: postgres://${DB_USER_NAME:-outline}:${DB_USER_PASS:-changeme_db_password}@outline-db:5432/${DB_CREATE_DATABASE_NAME:-outline}
+      REDIS_URL: redis://outline-redis:6379
+      URL: https://${BASE_DOMAIN_NAME:-example.com}
+      PORT: 3000
+      SMTP_HOST: ${EMAIL_SERVER_HOST:-172.17.0.1}
+      SMTP_PORT: ${EMAIL_SERVER_PORT:-587}
+      SMTP_USERNAME: ${EMAIL_SERVER_LOGIN_NAME:-}
+      SMTP_PASSWORD: ${EMAIL_SERVER_LOGIN_PASS:-}
+      SMTP_FROM_EMAIL: ${EMAIL_SERVER_MAIL_FROM:-outline@example.com}
+      SMTP_SECURE: "false"
     volumes:
-      - ./volumes/data/outline:/data
-      - ./volumes/config/outline:/config
+      - ./volumes/data/outline:/var/lib/outline/data
     depends_on:
       - outline-db
+      - outline-redis
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:3001"]
+      test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
       interval: 30s
       timeout: 10s
       retries: 3
 
   outline-db:
-    image: postgres:16-alpine
+    image: postgres:latest
+    pull_policy: always
     container_name: outline-db
-    restart: unless-stopped
+    restart: always
     logging: *default-logging
     networks:
       - outline
@@ -44,7 +60,23 @@ services:
     volumes:
       - ./volumes/data/db/postgres/outline:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U $${{POSTGRES_USER}} -d $${{POSTGRES_DB}}"]
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  outline-redis:
+    image: redis:alpine
+    pull_policy: always
+    container_name: outline-redis
+    restart: always
+    logging: *default-logging
+    networks:
+      - outline
+    environment:
+      TZ: ${TZ:-America/New_York}
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
       interval: 30s
       timeout: 10s
       retries: 3

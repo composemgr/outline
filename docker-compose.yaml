@@ -16,6 +16,8 @@ services:
     logging: *default-logging
     networks:
       - outline
+      - proxy
+      - cloudflare
     ports:
       - "172.17.0.1:3001:3000"
     environment:
@@ -33,6 +35,8 @@ services:
       SMTP_PASSWORD: ${EMAIL_SERVER_LOGIN_PASS:-}
       SMTP_FROM_EMAIL: ${EMAIL_SERVER_MAIL_FROM:-outline@example.com}
       SMTP_SECURE: "false"
+      CONTAINER_NAME: outline-app
+      HOSTNAME: ${BASE_HOST_NAME:-$HOSTNAME}
     volumes:
       - ./volumes/data/outline:/var/lib/outline/data
     depends_on:
@@ -43,6 +47,22 @@ services:
       interval: 30s
       timeout: 10s
       retries: 3
+    labels:
+      - 'traefik.enable=true'
+      - 'cloudflare.enable=true'
+      - 'traefik.docker.network=proxy'
+      - 'cloudflare.service=http://outline-app:3000'
+      - 'cloudflare.hostname=outline.${CLOUDFLARE_ZONE_NAME:-}'
+      - 'traefik.http.routers.outline-app.entrypoints=http'
+      - 'traefik.http.routers.outline-app-secure.tls=true'
+      - 'traefik.http.routers.outline-app.rule=Host($(${BASE_HOST_NAME:-$HOSTNAME}))'
+      - 'traefik.http.middlewares.outline-app-https-redirect.redirectscheme.scheme=https'
+      - 'traefik.http.routers.outline-app.middlewares=outline-app-https-redirect'
+      - 'traefik.http.routers.outline-app-secure.entrypoints=https'
+      - 'traefik.http.routers.outline-app-secure.rule=Host($(${BASE_HOST_NAME:-$HOSTNAME}))'
+      - 'traefik.http.routers.outline-app-secure.tls.certresolver=cloudflare'
+      - 'traefik.http.routers.outline-app-secure.service=outline-app'
+      - 'traefik.http.services.outline-app.loadbalancer.server.port=3000'
 
   outline-db:
     image: postgres:latest
@@ -57,6 +77,7 @@ services:
       POSTGRES_DB: ${DB_CREATE_DATABASE_NAME:-outline}
       POSTGRES_USER: ${DB_USER_NAME:-outline}
       POSTGRES_PASSWORD: ${DB_USER_PASS:-changeme_db_password}
+      CONTAINER_NAME: outline-db
     volumes:
       - ./volumes/data/db/postgres/outline:/var/lib/postgresql/data
     healthcheck:
@@ -75,6 +96,7 @@ services:
       - outline
     environment:
       TZ: ${TZ:-America/New_York}
+      CONTAINER_NAME: outline-redis
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 30s
@@ -84,3 +106,7 @@ services:
 networks:
   outline:
     external: false
+  proxy:
+    external: true
+  cloudflare:
+    external: true

@@ -24,7 +24,7 @@ services:
       TZ: ${TZ:-America/New_York}
       NODE_ENV: production
       SECRET_KEY: ${APP_SECRET_KEY:-changeme_secret_key_min_32_chars}
-      UTILS_SECRET: ${APP_UTILS_SECRET:-changeme_utils_secret_min_32_chars}
+      UTILS_SECRET: ${APP_SECRET_TOKEN_32:-changeme_utils_secret_min_32_chars}
       DATABASE_URL: postgres://${DB_USER_NAME:-outline}:${DB_USER_PASS:-changeme_db_password}@outline-db:5432/${DB_CREATE_DATABASE_NAME:-outline}
       REDIS_URL: redis://outline-redis:6379
       URL: https://${BASE_DOMAIN_NAME:-example.com}
